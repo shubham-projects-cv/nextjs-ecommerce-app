@@ -1,23 +1,19 @@
-type Props = {
-  label: string;
-  error?: string;
-} & React.InputHTMLAttributes<HTMLInputElement>;
+"use client";
 
-export default function Input({ label, error, ...props }: Props) {
+import { InputHTMLAttributes } from "react";
+
+type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+  label?: string;
+};
+
+export default function Input({ label, ...props }: InputProps) {
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium">{label}</label>
+      {label && <label className="text-sm text-gray-700">{label}</label>}
       <input
         {...props}
-        className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2
-          ${
-            error
-              ? "border-red-500 ring-red-200"
-              : "border-gray-300 ring-black/10"
-          }
-        `}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
