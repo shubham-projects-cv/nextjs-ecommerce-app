@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { saveToken } from "@/lib/auth/token";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import { saveToken } from "@/lib/auth/token";
+import Link from "next/link";
+
+type LoginResponse = {
+  token: string;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,11 +19,11 @@ export default function LoginPage() {
     password: "",
   });
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function submit() {
-    setError("");
+  async function handleSubmit() {
+    setError(null);
     setLoading(true);
 
     try {
@@ -28,19 +33,19 @@ export default function LoginPage() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
+        const data: { message?: string } = await res.json();
         throw new Error(data.message || "Login failed");
       }
 
+      const data: LoginResponse = await res.json();
       saveToken(data.token);
-      router.push("/dashboard");
-    } catch (e) {
-      if (e instanceof Error) {
-        setError(e.message);
+      router.replace("/dashboard");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
       } else {
-        setError("Login failed");
+        setError("Something went wrong");
       }
     } finally {
       setLoading(false);
@@ -48,49 +53,54 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-xl border p-6 space-y-4">
-        <h1 className="text-xl font-semibold text-center">Login</h1>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow">
+        <h1 className="mb-6 text-center text-2xl font-semibold">Login</h1>
 
-        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600">
+            {error}
+          </p>
+        )}
 
-        <Input
-          label="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
+        <div className="space-y-4">
+          <Input
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
 
-        <Input
-          label="Password"
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
+          <Input
+            label="Password"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => router.push("/auth/forgot-password")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Forgot password?
-          </button>
+          <div className="text-right text-sm">
+            <Link
+              href="/auth/forgot-password"
+              className="text-blue-600 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <Button onClick={handleSubmit} disabled={loading} className="w-full">
+            {loading ? "Logging in..." : "Login"}
+          </Button>
+
+          <p className="text-center text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/auth/register"
+              className="text-blue-600 hover:underline"
+            >
+              Register
+            </Link>
+          </p>
         </div>
-
-        <Button onClick={submit} disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </Button>
-
-        <p className="text-sm text-center text-gray-600">
-          Don’t have an account?{" "}
-          <button
-            className="text-blue-600 hover:underline"
-            onClick={() => router.push("/auth/register")}
-          >
-            Register
-          </button>
-        </p>
       </div>
     </div>
   );

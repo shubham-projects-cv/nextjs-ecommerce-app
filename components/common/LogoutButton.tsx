@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { clearToken } from "@/lib/auth/token";
+import { removeToken } from "@/lib/auth/token";
 
 export default function LogoutButton() {
   const router = useRouter();
 
   function logout() {
-    clearToken();
+    removeToken();
     router.replace("/auth/login");
   }
 
