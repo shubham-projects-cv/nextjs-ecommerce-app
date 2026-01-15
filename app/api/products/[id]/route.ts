@@ -1,29 +1,41 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/models/Product";
 import { verifyToken } from "@/lib/auth/jwt";
 
-function getUserId(req: Request): string {
+/**
+ * Helper: extract userId as ObjectId
+ */
+function getUserId(req: NextRequest): mongoose.Types.ObjectId {
   const auth = req.headers.get("authorization");
   if (!auth || !auth.startsWith("Bearer ")) {
     throw new Error("UNAUTHORIZED");
   }
-  return verifyToken(auth.split(" ")[1]).userId;
+
+  const token = auth.split(" ")[1];
+  const decoded = verifyToken(token);
+
+  return new mongoose.Types.ObjectId(decoded.userId);
 }
 
 /**
- * GET product by id
+ * GET /api/products/[id]
  */
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = getUserId(req);
     await connectDB();
 
+    const userId = getUserId(req);
+
+    // ✅ MUST AWAIT PARAMS
+    const { id } = await params;
+
     const product = await Product.findOne({
-      _id: params.id,
+      _id: new mongoose.Types.ObjectId(id),
       userId,
     });
 
@@ -35,12 +47,15 @@ export async function GET(
     }
 
     return NextResponse.json(product);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("GET PRODUCT ERROR:", error);
+    if (err instanceof Error) {
+      return NextResponse.json({ message: err.message }, { status: 500 });
+    }
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
@@ -49,20 +64,24 @@ export async function GET(
 }
 
 /**
- * UPDATE product
+ * PUT /api/products/[id]
  */
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = getUserId(req);
-    const body = await req.json();
-
     await connectDB();
 
+    const userId = getUserId(req);
+    const { id } = await params;
+    const body = await req.json();
+
     const product = await Product.findOneAndUpdate(
-      { _id: params.id, userId },
+      {
+        _id: new mongoose.Types.ObjectId(id),
+        userId,
+      },
       body,
       { new: true }
     );
@@ -75,12 +94,15 @@ export async function PUT(
     }
 
     return NextResponse.json(product);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("UPDATE PRODUCT ERROR:", error);
+    if (err instanceof Error) {
+      return NextResponse.json({ message: err.message }, { status: 500 });
+    }
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
@@ -89,18 +111,20 @@ export async function PUT(
 }
 
 /**
- * DELETE product
+ * DELETE /api/products/[id]
  */
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = getUserId(req);
     await connectDB();
 
+    const userId = getUserId(req);
+    const { id } = await params;
+
     const product = await Product.findOneAndDelete({
-      _id: params.id,
+      _id: new mongoose.Types.ObjectId(id),
       userId,
     });
 
@@ -112,12 +136,15 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "Product deleted successfully" });
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("DELETE PRODUCT ERROR:", error);
+    if (err instanceof Error) {
+      return NextResponse.json({ message: err.message }, { status: 500 });
+    }
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
