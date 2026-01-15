@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
-import { saveToken } from "@/lib/auth";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,12 +11,12 @@ export default function LoginPage() {
 
   async function submit() {
     try {
-      const res = await api.post("/auth/login", form);
-      saveToken(res.data.token);
+      const res = await axios.post("/api/auth/login", form);
+      localStorage.setItem("token", res.data.token);
       router.push("/dashboard");
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        setError(e.message);
+      if (axios.isAxiosError(e)) {
+        setError(e.response?.data?.message ?? "Login failed");
       } else {
         setError("Login failed");
       }
@@ -31,21 +28,26 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-4 rounded-xl border p-6">
         <h1 className="text-xl font-semibold">Login</h1>
 
-        <Input
-          label="Email"
-          value={form.email}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <input
+          className="w-full border rounded-md p-2"
+          placeholder="Email"
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
-        <Input
-          label="Password"
+        <input
           type="password"
-          value={form.password}
+          className="w-full border rounded-md p-2"
+          placeholder="Password"
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <Button onClick={submit}>Login</Button>
+        <button
+          onClick={submit}
+          className="w-full rounded-md bg-black text-white py-2"
+        >
+          Login
+        </button>
       </div>
     </div>
   );
