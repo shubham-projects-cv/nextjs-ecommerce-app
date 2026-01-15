@@ -3,33 +3,28 @@ import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/models/Product";
 import { productCreateSchema } from "@/lib/validators/product";
 import { verifyToken } from "@/lib/auth/jwt";
+import { publishEvent } from "@/lib/kafka/producer";
 
 /**
  * Extract userId from Authorization header
  */
-function getUserIdFromRequest(req: Request): string {
-  const authHeader = req.headers.get("authorization");
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+function getUserId(req: Request): string {
+  const auth = req.headers.get("authorization");
+  if (!auth || !auth.startsWith("Bearer ")) {
     throw new Error("UNAUTHORIZED");
   }
 
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  const payload = verifyToken(token);
-  return payload.userId;
+  const token = auth.split(" ")[1];
+  return verifyToken(token).userId;
 }
 
 /**
  * POST /api/products
- * Create product
+ * Create product + publish Kafka event
  */
 export async function POST(req: Request) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = getUserId(req);
     const body = await req.json();
 
     const parsed = productCreateSchema.safeParse(body);
@@ -45,6 +40,13 @@ export async function POST(req: Request) {
 
     const product = await Product.create({
       ...parsed.data,
+      userId,
+    });
+
+    // 🔔 Kafka event
+    await publishEvent("product-events", {
+      type: "PRODUCT_CREATED",
+      productId: product._id.toString(),
       userId,
     });
 
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
  */
 export async function GET(req: Request) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = getUserId(req);
 
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page") || 1);
@@ -83,7 +85,7 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean();
 
-    return NextResponse.json(products, { status: 200 });
+    return NextResponse.json(products);
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
