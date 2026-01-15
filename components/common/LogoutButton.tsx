@@ -1,20 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { removeToken } from "@/lib/auth/token";
+import { clearToken } from "@/lib/auth/token";
 
 export default function LogoutButton() {
   const router = useRouter();
 
   function logout() {
-    removeToken();
+    clearToken();
     router.replace("/auth/login");
   }
 
   return (
     <button
       onClick={logout}
-      className="rounded-md border px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+      className="rounded-md border px-3 py-1 text-sm hover:bg-gray-100"
     >
       Logout
     </button>

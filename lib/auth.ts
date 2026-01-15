@@ -1,3 +1,5 @@
+import { getToken } from "./auth/token";
+
 export function saveToken(token: string) {
   localStorage.setItem("token", token);
 }
@@ -7,5 +9,5 @@ export function clearToken() {
 }
 
 export function isLoggedIn() {
-  return Boolean(localStorage.getItem("auth_token"));
+  return Boolean(getToken());
 }

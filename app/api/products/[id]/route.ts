@@ -1,78 +1,46 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/models/Product";
-import { productUpdateSchema } from "@/lib/validators/product";
 import { verifyToken } from "@/lib/auth/jwt";
-import { publishEvent } from "@/lib/kafka/producer";
-import { updateProductIndex, deleteProductIndex } from "@/lib/elastic/products";
 
-
-/**
- * Extract userId from Authorization header
- */
 function getUserId(req: Request): string {
   const auth = req.headers.get("authorization");
   if (!auth || !auth.startsWith("Bearer ")) {
     throw new Error("UNAUTHORIZED");
   }
-
-  const token = auth.split(" ")[1];
-  return verifyToken(token).userId;
+  return verifyToken(auth.split(" ")[1]).userId;
 }
 
 /**
- * PUT /api/products/:id
- * Update product + publish Kafka event
+ * GET product by id
  */
-export async function PUT(
+export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const userId = getUserId(req);
-    const { id } = await params;
-    const body = await req.json();
-
-    const parsed = productUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      return NextResponse.json(
-        { message: issue.message, field: issue.path[0] },
-        { status: 400 }
-      );
-    }
-
     await connectDB();
 
-    const updated = await Product.findOneAndUpdate(
-      { _id: id, userId },
-      parsed.data,
-      { new: true }
-    );
+    const product = await Product.findOne({
+      _id: params.id,
+      userId,
+    });
 
-    if (!updated) {
+    if (!product) {
       return NextResponse.json(
         { message: "Product not found" },
         { status: 404 }
       );
     }
 
-    // 🔔 Kafka event
-    await publishEvent("product-events", {
-      type: "PRODUCT_UPDATED",
-      productId: id,
-      userId,
-    });
-
-    await updateProductIndex(id, updated.toObject());
-
-    return NextResponse.json(updated);
-  } catch (error: unknown) {
+    return NextResponse.json(product);
+  } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("Update product error:", error);
+    console.error("GET PRODUCT ERROR:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
@@ -81,48 +49,75 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/products/:id
- * Delete product + publish Kafka event
+ * UPDATE product
  */
-export async function DELETE(
+export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const userId = getUserId(req);
-    const { id } = await params;
+    const body = await req.json();
 
     await connectDB();
 
-    const deleted = await Product.findOneAndDelete({
-      _id: id,
-      userId,
-    });
+    const product = await Product.findOneAndUpdate(
+      { _id: params.id, userId },
+      body,
+      { new: true }
+    );
 
-    if (!deleted) {
+    if (!product) {
       return NextResponse.json(
         { message: "Product not found" },
         { status: 404 }
       );
     }
 
-    // 🔔 Kafka event
-    await publishEvent("product-events", {
-      type: "PRODUCT_DELETED",
-      productId: id,
-      userId,
-    });
-    
-    await deleteProductIndex(id);
-
-
-    return NextResponse.json({ message: "Product deleted" });
-  } catch (error: unknown) {
+    return NextResponse.json(product);
+  } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("Delete product error:", error);
+    console.error("UPDATE PRODUCT ERROR:", error);
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE product
+ */
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userId = getUserId(req);
+    await connectDB();
+
+    const product = await Product.findOneAndDelete({
+      _id: params.id,
+      userId,
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { message: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ message: "Product deleted successfully" });
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    console.error("DELETE PRODUCT ERROR:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

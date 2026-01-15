@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveToken } from "@/lib/auth/token";
+import { setToken } from "@/lib/auth/token";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
@@ -39,7 +39,7 @@ export default function LoginPage() {
       }
 
       const data: LoginResponse = await res.json();
-      saveToken(data.token);
+      setToken(data.token);
       router.replace("/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {

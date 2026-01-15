@@ -1,5 +1,6 @@
 "use client";
 
+import { getToken } from "@/lib/auth/token";
 import { Product } from "@/lib/types/product";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +18,7 @@ export default function ProductCard({ product, onDelete }: Props) {
     );
     if (!confirmed) return;
 
-    const token = localStorage.getItem("auth_token");
+    const token = getToken();
     if (!token) {
       alert("Unauthorized");
       return;

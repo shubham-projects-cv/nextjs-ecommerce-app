@@ -25,15 +25,31 @@ export default function EditProductPage() {
     async function fetchProduct() {
       try {
         const token = getToken();
-        if (!token) throw new Error("Unauthorized");
+        if (!token) {
+          router.replace("/auth/login");
+          return;
+        }
 
         const res = await fetch(`/api/products/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
-        if (!res.ok) throw new Error("Failed to load product");
+        if (res.status === 401) {
+          throw new Error("Unauthorized. Please login again.");
+        }
+
+        if (res.status === 404) {
+          throw new Error("Product not found or access denied.");
+        }
+
+        if (!res.ok) {
+          throw new Error("Something went wrong while fetching product.");
+        }
 
         const data = await res.json();
+
         setForm({
           name: data.name,
           description: data.description || "",
@@ -41,16 +57,16 @@ export default function EditProductPage() {
           category: data.category,
           stock: String(data.stock),
         });
-      } catch (e: unknown) {
-        if (e instanceof Error) setError(e.message);
-        else setError("Something went wrong");
+      } catch (err: unknown) {
+        if (err instanceof Error) setError(err.message);
+        else setError("Unexpected error occurred");
       } finally {
         setLoading(false);
       }
     }
 
     fetchProduct();
-  }, [id]);
+  }, [id, router]);
 
   async function submit() {
     setLoading(true);
@@ -58,7 +74,10 @@ export default function EditProductPage() {
 
     try {
       const token = getToken();
-      if (!token) throw new Error("Unauthorized");
+      if (!token) {
+        router.replace("/auth/login");
+        return;
+      }
 
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
@@ -79,22 +98,24 @@ export default function EditProductPage() {
       }
 
       router.push("/dashboard");
-    } catch (e: unknown) {
-      if (e instanceof Error) setError(e.message);
-      else setError("Something went wrong");
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+      else setError("Update failed");
     } finally {
       setLoading(false);
     }
   }
 
-  if (loading) return <p className="p-4">Loading...</p>;
+  if (loading) {
+    return <p className="p-6 text-center">Loading product…</p>;
+  }
 
   return (
     <div className="mx-auto max-w-lg p-4">
-      <h1 className="mb-4 text-xl font-semibold">Edit Product</h1>
+      <h1 className="mb-4 text-xl font-semibold text-center">Edit Product</h1>
 
       {error && (
-        <div className="mb-3 rounded bg-red-50 p-2 text-sm text-red-600">
+        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -133,7 +154,7 @@ export default function EditProductPage() {
         />
 
         <Button onClick={submit} disabled={loading}>
-          {loading ? "Updating..." : "Update Product"}
+          {loading ? "Updating…" : "Update Product"}
         </Button>
       </div>
     </div>
