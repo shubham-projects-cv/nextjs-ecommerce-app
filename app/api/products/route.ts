@@ -4,6 +4,7 @@ import Product from "@/lib/models/Product";
 import { productCreateSchema } from "@/lib/validators/product";
 import { verifyToken } from "@/lib/auth/jwt";
 import { publishEvent } from "@/lib/kafka/producer";
+import { indexProduct } from "@/lib/elastic/products";
 
 /**
  * Extract userId from Authorization header
@@ -49,6 +50,8 @@ export async function POST(req: Request) {
       productId: product._id.toString(),
       userId,
     });
+
+    await indexProduct(product.toObject());
 
     return NextResponse.json(product, { status: 201 });
   } catch (error: unknown) {

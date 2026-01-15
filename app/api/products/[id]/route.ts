@@ -4,6 +4,8 @@ import Product from "@/lib/models/Product";
 import { productUpdateSchema } from "@/lib/validators/product";
 import { verifyToken } from "@/lib/auth/jwt";
 import { publishEvent } from "@/lib/kafka/producer";
+import { updateProductIndex, deleteProductIndex } from "@/lib/elastic/products";
+
 
 /**
  * Extract userId from Authorization header
@@ -62,6 +64,8 @@ export async function PUT(
       userId,
     });
 
+    await updateProductIndex(id, updated.toObject());
+
     return NextResponse.json(updated);
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
@@ -108,6 +112,9 @@ export async function DELETE(
       productId: id,
       userId,
     });
+    
+    await deleteProductIndex(id);
+
 
     return NextResponse.json({ message: "Product deleted" });
   } catch (error: unknown) {
