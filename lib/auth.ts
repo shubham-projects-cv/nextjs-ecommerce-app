@@ -7,5 +7,5 @@ export function clearToken() {
 }
 
 export function isLoggedIn() {
-  return Boolean(localStorage.getItem("token"));
+  return Boolean(localStorage.getItem("auth_token"));
 }
