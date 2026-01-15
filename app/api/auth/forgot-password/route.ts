@@ -12,9 +12,9 @@ export async function POST(req: Request) {
     // 1. Validate input
     const parsed = forgotPasswordSchema.safeParse(body);
     if (!parsed.success) {
-      const error = parsed.error.issues[0];
+      const issue = parsed.error.issues[0];
       return NextResponse.json(
-        { message: error.message, field: error.path[0] },
+        { message: issue.message, field: issue.path[0] },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     // 3. Find user
     const user = await User.findOne({ email });
     if (!user) {
-      // IMPORTANT: Do not reveal if email exists
+      // Do NOT reveal user existence
       return NextResponse.json(
         { message: "If account exists, reset link sent" },
         { status: 200 }
@@ -35,18 +35,20 @@ export async function POST(req: Request) {
     }
 
     // 4. Generate reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto
       .createHash("sha256")
-      .update(resetToken)
+      .update(rawToken)
       .digest("hex");
 
-    user.resetToken = hashedToken;
-    user.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    // ✅ FIXED FIELD NAMES
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+
     await user.save();
 
     // 5. Send email
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
 
     await sendEmail(
       user.email,
@@ -62,8 +64,8 @@ export async function POST(req: Request) {
       { message: "If account exists, reset link sent" },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Forgot password error:", error);
+  } catch (err: unknown) {
+    console.error("Forgot password error:", err);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

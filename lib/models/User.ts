@@ -4,8 +4,11 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  resetToken?: string;
-  resetTokenExpiry?: Date;
+
+  // 🔐 reset password fields
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,22 +20,26 @@ const UserSchema = new Schema<IUser>(
       required: true,
       trim: true,
     },
+
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
-      index: true, // 🔥 performance: fast login lookup
+      index: true,
     },
+
     password: {
       type: String,
       required: true,
-      select: false, // 🔐 security: never return password by default
     },
-    resetToken: {
+
+    // 🔐 reset password
+    resetPasswordToken: {
       type: String,
     },
-    resetTokenExpiry: {
+
+    resetPasswordExpires: {
       type: Date,
     },
   },
@@ -41,7 +48,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-// Prevent model overwrite in Next.js hot reload
+// Prevent model overwrite on hot reload
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
 
