@@ -1,3 +1,48 @@
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products for logged-in user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of products
+ *   post:
+ *     summary: Create a new product
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *               - category
+ *               - stock
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               category:
+ *                 type: string
+ *               stock:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Product created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import Product from "@/lib/models/Product";
